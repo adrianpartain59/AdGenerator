@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Static Ad Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">Static Ad Generator</div>
+      <div class="meta" id="dims">—</div>
+    </header>
+
+    <main class="layout">
+      <section class="stage-wrap">
+        <canvas id="stage"></canvas>
+      </section>
+
+      <aside class="panel">
+        <div class="controls">
+          <button id="playPause" class="btn primary">▶ Play</button>
+          <button id="restart" class="btn">↻ Restart</button>
+          <button id="export" class="btn export">⤓ Export MP4 (4K)</button>
+        </div>
+
+        <label class="row">
+          <span>Timeline</span>
+          <input id="scrub" type="range" min="0" max="1000" value="0" />
+        </label>
+        <div class="readout" id="time">0.00s / 0.00s</div>
+
+        <label class="check">
+          <input id="loop" type="checkbox" checked />
+          <span>Loop preview</span>
+        </label>
+
+        <div class="divider"></div>
+
+        <div class="editor">
+          <label class="row">
+            <span>Edit layer</span>
+            <select id="layerSelect"></select>
+          </label>
+          <div class="xform" id="xform"></div>
+          <button id="copyXform" class="btn">⧉ Copy transform values</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="hint">
+          <div class="readout" id="coord">click an element to select it</div>
+          <p>
+            <strong>Click</strong> an element on the canvas (or use the dropdown)
+            to select it, then tweak its position (X/Y), stacking order (Z),
+            scale, and rotation (X/Y/Z) live. Lower <strong>Z</strong> tucks a
+            layer behind others; higher brings it forward.
+            <strong>Shift-click</strong> drops the selected layer where you
+            click. Hit <code>Copy transform values</code> to paste back into
+            <code>src/scene.js</code>.
+          </p>
+          <div class="status" id="status">Loading…</div>
+        </div>
+      </aside>
+    </main>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
