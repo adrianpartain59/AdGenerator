@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Static Ad Generator</title>
+    <title>AI Ad Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -11,64 +11,114 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+          "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm"
+        }
+      }
+    </script>
   </head>
-  <body>
-    <header class="topbar">
-      <div class="brand">Static Ad Generator</div>
-      <div class="meta" id="dims">—</div>
-    </header>
-
-    <main class="layout">
-      <section class="stage-wrap">
-        <canvas id="stage"></canvas>
-      </section>
-
-      <aside class="panel">
-        <div class="controls">
-          <button id="playPause" class="btn primary">▶ Play</button>
-          <button id="restart" class="btn">↻ Restart</button>
-          <button id="export" class="btn export">⤓ Export MP4 (4K)</button>
+  <body class="layout-split signed-out">
+    <div class="app">
+      <!-- ===== Sidebar: projects + account ============================== -->
+      <aside class="sidebar">
+        <div class="side-head">
+          <div class="brand">◆ AI Ad Studio</div>
+          <button id="newProject" class="btn primary block">＋ New ad</button>
         </div>
-
-        <label class="row">
-          <span>Timeline</span>
-          <input id="scrub" type="range" min="0" max="1000" value="0" />
-        </label>
-        <div class="readout" id="time">0.00s / 0.00s</div>
-
-        <label class="check">
-          <input id="loop" type="checkbox" checked />
-          <span>Loop preview</span>
-        </label>
-
-        <div class="divider"></div>
-
-        <div class="editor">
-          <label class="row">
-            <span>Edit layer</span>
-            <select id="layerSelect"></select>
-          </label>
-          <div class="xform" id="xform"></div>
-          <button id="copyXform" class="btn">⧉ Copy transform values</button>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="hint">
-          <div class="readout" id="coord">click an element to select it</div>
-          <p>
-            <strong>Click</strong> an element on the canvas (or use the dropdown)
-            to select it, then tweak its position (X/Y), stacking order (Z),
-            scale, and rotation (X/Y/Z) live. Lower <strong>Z</strong> tucks a
-            layer behind others; higher brings it forward.
-            <strong>Shift-click</strong> drops the selected layer where you
-            click. Hit <code>Copy transform values</code> to paste back into
-            <code>src/scene.js</code>.
-          </p>
-          <div class="status" id="status">Loading…</div>
+        <div class="project-list" id="projectList"></div>
+        <div class="side-foot">
+          <div class="acct">
+            <span class="acct-email" id="acctEmail">—</span>
+            <button id="signOut" class="btn mini" title="Sign out">⎋</button>
+          </div>
         </div>
       </aside>
-    </main>
+
+      <!-- ===== Center: chat ============================================= -->
+      <section class="chat">
+        <header class="pane-head">
+          <span class="proj-name" id="projName">—</span>
+          <div class="view-toggle">
+            <button data-view="chat" title="Chat">💬</button>
+            <button data-view="split" class="active" title="Split">▣</button>
+            <button data-view="editor" title="Editor">🎬</button>
+          </div>
+        </header>
+        <div class="transcript" id="transcript"></div>
+        <div class="composer">
+          <div class="att-pills" id="attPills" hidden></div>
+          <div class="chat-status" id="chatStatus" hidden></div>
+          <div class="composer-row">
+            <button id="attach" class="icon-btn" title="Add images">＋</button>
+            <input id="attachInput" type="file" accept="image/*" multiple hidden />
+            <textarea
+              id="chatInput"
+              rows="1"
+              placeholder="Describe your ad, or paste an example ad / screenshots…"
+            ></textarea>
+            <button id="chatSend" class="icon-btn send" title="Send">➤</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Right: editor =========================================== -->
+      <section class="editor">
+        <header class="pane-head">
+          <span class="meta" id="dims">—</span>
+          <span class="savestatus" id="saveStatus">—</span>
+        </header>
+
+        <div class="stage-wrap">
+          <canvas id="stage"></canvas>
+        </div>
+
+        <div class="editor-panel">
+          <div class="controls">
+            <button id="playPause" class="btn primary">▶ Play</button>
+            <button id="restart" class="btn">↻</button>
+            <button id="export" class="btn export">⤓ MP4 (4K)</button>
+          </div>
+
+          <label class="row">
+            <span>Timeline</span>
+            <input id="scrub" type="range" min="0" max="1000" value="0" />
+          </label>
+          <div class="readout" id="time">0.00s / 0.00s</div>
+          <label class="check">
+            <input id="loop" type="checkbox" checked />
+            <span>Loop preview</span>
+          </label>
+
+          <div class="divider"></div>
+
+          <div class="assets">
+            <div class="row"><span>Assets</span></div>
+            <label class="btn upload" for="assetInput">⤒ Upload images</label>
+            <input id="assetInput" type="file" accept="image/*" multiple hidden />
+            <div class="assetgrid" id="assetGrid"></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="editor-block">
+            <label class="row">
+              <span>Edit layer</span>
+              <select id="layerSelect"></select>
+            </label>
+            <div class="xform" id="xform"></div>
+            <button id="copyXform" class="btn">⧉ Copy transform</button>
+          </div>
+
+          <div class="divider"></div>
+          <div class="readout" id="coord">click an element to select it</div>
+          <div class="status" id="status">Loading…</div>
+        </div>
+      </section>
+    </div>
 
     <script type="module" src="src/main.js"></script>
   </body>

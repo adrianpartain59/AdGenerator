@@ -1,111 +1,91 @@
-# Static Ad Generator
+# AI Ad Studio
 
-A tiny, dependency-free tool for turning image assets + text into **moving static ads**.
-Author your ad as data in one file, preview it live, and export it as a video.
+A ChatGPT-style studio for making **moving social ads**. Describe the ad you want —
+or paste an example ad and your app screenshots — and a Gemini agent builds it for
+you: layout, copy, animations, brand-new imagery, and 3D iPhone mockups. When it's
+done you drop into a full editor with complete manual control over every element,
+then export an MP4.
 
-It does three things:
-
-1. **Add & manipulate text** (headlines, subtext, fake buttons) — all in `src/scene.js`.
-2. **Animate** images, text, and buttons — keyframes written by hand (slide, fade, pop, zoom…).
-3. **Preview & export** — play/scrub in the browser, then export a video file.
-
-No build step, no npm install. Just static HTML/CSS/JS + the HTML5 Canvas.
+No build step — vanilla ES modules + the HTML5 Canvas, plus Three.js (3D mockups) and
+Supabase (accounts + cloud storage), all loaded from CDNs.
 
 ---
 
-## Run it
+## What it does
 
-Canvas video export needs the files served over HTTP (not opened as `file://`),
-otherwise the browser taints the canvas and blocks export. Start a local server:
-
-```bash
-# from the project root
-python3 -m http.server 8000
-# then open http://localhost:8000
-```
-
-(Or use the helper: `./start.sh`)
+- **Chat → ad.** Tell the agent what you want; it returns ad copy and a fully
+  composed, animated scene that loads straight into the editor.
+- **Use your assets.** Paste/drag/upload logos, product shots, screenshots, and
+  example ads. The agent references them by name and matches the example's style.
+- **AI imagery.** Ask for backgrounds or visuals and the agent generates them
+  (Gemini image model), adding the result to your asset library.
+- **3D iPhone mockups.** Drop in a UI screenshot and the agent (or you, via the 📱
+  button on any asset) wraps it onto a posed iPhone 17 Pro and uses it in the ad.
+- **Full editor.** Live preview/scrub, click-to-select layers, position/scale/rotate,
+  z-order, undo/redo, autosave — then **Export MP4 (4K)**.
+- **Accounts + cloud saving.** Sign in; every project, asset, and conversation is
+  saved to your Supabase project and synced across devices.
 
 ---
 
-## Author your ad — `src/scene.js`
+## Setup
 
-A scene is the canvas size + duration + a list of **layers** drawn bottom→top.
+1. **Supabase + Gemini** — follow [`supabase/README.md`](supabase/README.md): create a
+   project, run `schema.sql`, paste your URL + anon key into
+   [`src/supabaseClient.js`](src/supabaseClient.js), set the `GEMINI_API_KEY` secret,
+   and `supabase functions deploy ai-agent`.
+2. **Run it locally** — a local server is required (ESM modules, the 3D `.glb`/`.exr`,
+   and un-tainted canvas export all need HTTP, not `file://`):
 
-```js
-export const scene = {
-  width: 1080,
-  height: 1350,     // 4:5 portrait
-  duration: 4.5,    // seconds
-  fps: 30,
-  background: "#05060a",            // or a gradient: [{at:0,color:"#000"}, ...]
-  layers: [ /* images, text, buttons */ ],
-};
+   ```bash
+   ./start.sh           # serves http://localhost:8000 and opens it
+   ./start.sh 9000      # or pick a port
+   ```
+
+3. **Sign in** and start a project. Type a request in chat, or paste an example ad.
+
+---
+
+## Architecture
+
+```
+Browser (vanilla ESM)
+  src/auth.js          email+password gate (Supabase)
+  src/main.js          bootstrap: sidebar ↔ chat ↔ editor over one project
+  src/chat.js          ChatGPT-style chat; calls the ai-agent function, runs
+                       client-side tool actions (3D mockups), loads the result
+  src/editor.js        canvas preview, transform/layer editor, undo/redo, MP4 export
+  src/engine.js        the scene renderer + animation engine (the ad format)
+  src/mockup.js        Three.js iPhone mockup — headless render + manual modal
+  src/store.js         Supabase-backed projects / assets / messages
+
+Supabase
+  Auth · Postgres (projects, assets, messages) · Storage (private `assets` bucket)
+  functions/ai-agent   Gemini agent: writes the scene, generates images, asks the
+                       browser for mockups. Gemini key stays server-side.
 ```
 
-### Layer types
-
-**Image**
-
-```js
-{ type: "image", src: "assets/phone.png", x: 540, y: 900, width: 620, anchor: "center" }
-```
-
-**Text** (supports `\n`, `maxWidth` wrapping, gradient/shadow/stroke)
-
-```js
-{ type: "text", text: "Start Free", x: 540, y: 270, align: "center",
-  font: '"Playfair Display", serif', size: 150, weight: "700", color: "#fff" }
-```
-
-**Button** (a *fake* button — just a rounded rect + label)
-
-```js
-{ type: "button", text: "3-Day Free Trial", x: 540, y: 900,
-  width: 540, height: 100, radius: 50, bg: "#2563eb", color: "#fff", size: 40 }
-```
-
-> `x` / `y` is the layer's **anchor point** (default `"center"`; also `"top left"`, `"bottom"`, etc.).
-> Click anywhere on the preview canvas to read its x,y — handy for placing layers.
-
-### Animations (the manual part)
-
-Give any layer an `animations` array. Each entry tweens one property over time:
-
-```js
-animations: [
-  { prop: "opacity", from: 0, to: 1, start: 0.3, duration: 0.7, ease: "easeOutCubic" },
-  { prop: "ty",      from: 60, to: 0, start: 0.3, duration: 0.7, ease: "easeOutBack" },
-]
-```
-
-- `prop`: `opacity` (0–1), `tx`/`ty` (px offset), `scale` (1 = normal), `rotation` (deg)
-- `tx/ty/scale/rotation` are applied **on top of** the layer's `x/y`, so layout and
-  motion stay separate (use them for slide-in / pop / drift).
-- `ease`: `linear`, `easeOutCubic`, `easeOutBack`, `easeOutExpo`, `easeOutElastic`,
-  `easeInOutCubic`, … (full list in `src/engine.js` → `Easing`).
-
-After editing `scene.js`, just **refresh** the browser.
+A **scene** is `{ width, height, duration, fps, background, layers[] }`; layers are
+`image | text | button`, each with an `animations[]` array. That's the exact JSON the
+agent emits and the editor edits — see [`src/engine.js`](src/engine.js) for the full
+schema and the easing list.
 
 ---
 
 ## Export
 
-Click **Export Video** → downloads a `.webm`.
-To convert to MP4 (e.g. for most ad platforms):
-
-```bash
-ffmpeg -i static-ad-*.webm -c:v libx264 -pix_fmt yuv420p -movflags +faststart ad.mp4
-```
+**Export MP4 (4K)** renders every frame off-screen with WebCodecs (H.264) and
+downloads an `.mp4` (falls back to `.webm` where WebCodecs is unavailable).
 
 ---
 
 ## Files
 
-| File             | What it is                                            |
-| ---------------- | ----------------------------------------------------- |
-| `src/scene.js`   | **Edit this.** Your ad: layers + animations.          |
-| `src/engine.js`  | Rendering + tweening engine (rarely needs editing).   |
-| `src/main.js`    | Playback controls + video export.                     |
-| `index.html` / `styles.css` | The preview UI.                            |
-| `assets/`        | Drop your own image assets here.                       |
+| Area | Files |
+| ---- | ----- |
+| App shell | `index.html`, `styles.css`, `src/main.js` |
+| AI chat | `src/chat.js`, `supabase/functions/ai-agent/index.ts` |
+| Editor + engine | `src/editor.js`, `src/engine.js` |
+| 3D mockup | `src/mockup.js`, `assets/3d/` |
+| Data + auth | `src/store.js`, `src/auth.js`, `src/supabaseClient.js`, `supabase/schema.sql` |
+| Dev server | `server.py`, `start.sh` |

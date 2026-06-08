@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Serve the ad generator locally and open it in your browser.
+# Serve the app locally over HTTP (required for ESM + the 3D assets) and open it.
 # Usage: ./start.sh [port]   (default port 8000)
 
 cd "$(dirname "$0")" || exit 1
@@ -23,10 +23,10 @@ if lsof -ti tcp:"${PORT}" >/dev/null 2>&1; then
   sleep 1
 fi
 
-echo "Static Ad Generator → ${URL}"
+echo "AI Ad Studio → ${URL}"
 
-# Start the server in the background, then open the browser once it's up.
-"${PY}" -m http.server "${PORT}" >/dev/null 2>&1 &
+# Start the static server in the background, then open the browser.
+"${PY}" server.py "${PORT}" >/dev/null 2>&1 &
 SERVER_PID=$!
 
 # Stop the server when you press Ctrl+C.

@@ -7,3 +7,15 @@
 
 # Logs
 *.log
+
+# Legacy local project storage (now in Supabase)
+projects/
+
+# Supabase CLI local state / secrets
+supabase/.branches
+supabase/.temp
+.env
+*.env.local
+
+# Local Claude Code settings (machine-specific)
+.claude/settings.local.json

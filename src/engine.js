@@ -68,14 +68,19 @@ export function loadImage(src) {
 }
 
 // Preload every image referenced by the scene so the first frame is correct.
-export async function preloadScene(scene) {
+// `resolve` maps a layer's logical src (e.g. "Vial.png") to an actual URL such
+// as an object URL for a project asset; by default src is used as-is. The
+// returned Map stays keyed by the original layer.src so drawing code is
+// unaffected.
+export async function preloadScene(scene, resolve = (s) => s) {
   const srcs = new Set();
   for (const layer of scene.layers) {
     if (layer.type === "image" && layer.src) srcs.add(layer.src);
   }
-  const loaded = await Promise.all([...srcs].map((s) => loadImage(s)));
+  const arr = [...srcs];
+  const loaded = await Promise.all(arr.map((s) => loadImage(resolve(s) ?? s)));
   const map = new Map();
-  [...srcs].forEach((s, i) => map.set(s, loaded[i]));
+  arr.forEach((s, i) => map.set(s, loaded[i]));
   return map;
 }
 
